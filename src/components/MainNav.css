@@ -1,0 +1,14 @@
+.nav {
+  padding: 30px;
+  display: flex;
+  flex-direction: row;
+  text-align: center;
+  margin: auto;
+  /* width: 30px; */
+}
+
+.nav__heading {
+  padding-left: 30px;
+  padding-right: 30px;
+  margin: 7px;
+}

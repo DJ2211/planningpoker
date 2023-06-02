@@ -1,0 +1,66 @@
+.mainpage {
+  padding-left: 300px;
+  padding-right: 300px;
+  padding-top: 200px;
+  text-align: center;
+  padding-bottom: 150px;
+}
+
+.mainpage__button {
+  background-color: #fd1010;
+  border-radius: 4px;
+  color: white;
+}
+
+.mainpage__bordercolor {
+  border: 2px solid;
+  border-color: #e8e9ea;
+}
+
+.mainpage__text {
+  font-size: 1rem;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  color: #1a2935;
+}
+
+.mainpage__input__div {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.mainpage__input {
+  width: 100%;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.mainpage__select__div {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.mainpage__select {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  width: 100%;
+  text-align: start;
+}
+
+.mainpage__button__div {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.mainpage__button {
+  width: 100%;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  border: none;
+}
+
+.mainpage__option {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  width: 100%;
+}

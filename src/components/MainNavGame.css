@@ -1,0 +1,38 @@
+.nav {
+  padding: 30px;
+  display: flex;
+  flex-direction: row;
+  text-align: center;
+  margin: auto;
+  /* width: 30px; */
+}
+
+.nav__heading {
+  padding-left: 30px;
+  padding-right: 30px;
+  margin: 7px;
+}
+
+.nav__invite__button {
+  color: #ff7e7e;
+
+  border: 2px solid #fd0d0d !important;
+  background-color: #fff !important;
+  height: 2.4rem !important;
+  align-items: center;
+  border-radius: 0.8rem;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  outline: 0;
+  padding: 30px;
+  position: relative;
+  text-align: center;
+  text-decoration: none;
+}
+
+.mainnav__main__div {
+  justify-content: space-between;
+}
