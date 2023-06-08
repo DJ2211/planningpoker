@@ -1,7 +1,7 @@
 .maingame {
   padding-left: 500px;
   padding-right: 500px;
-  padding-top: 100px;
+  padding-top: 85px;
   text-align: center;
   padding-bottom: 30px;
 }
@@ -22,6 +22,27 @@
   min-width: 33.8rem;
   background-color: rgb(253, 16, 16, 0.5);
   border-radius: 60px; */
+}
+
+.maingame__invite__button {
+  color: #ff7e7e;
+
+  border: 2px solid #fd0d0d !important;
+  background-color: #fff !important;
+  height: 2.4rem !important;
+  align-items: center;
+  border-radius: 0.8rem;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 1.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  outline: 0;
+  padding: 30px;
+  position: relative;
+  text-align: center;
+  text-decoration: none;
+  margin-bottom: 15px;
 }
 
 .maingame__card {
@@ -92,8 +113,14 @@
   margin-bottom: 10px;
 }
 
+.mainpage__button {
+  background-color: #fd1010;
+  border-radius: 4px;
+  color: white;
+}
+
 .main__card__render {
-  margin: 0 0 0.8rem;
+  /* margin: 0 0 0.8rem; */
   min-width: 60rem;
   text-align: center;
 }
@@ -161,4 +188,37 @@
 }
 .maingame__card__padding {
   padding: 10px;
+}
+
+.maingame__card__cardText {
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.maingame__card__cardText__avg {
+  text-align: center;
+}
+
+.maingame__card__renderForOutput {
+  background-color: transparent;
+  border: #ff7e7e 5px solid;
+}
+
+/* for progress bar */
+.progress-bar {
+  width: 15px; /* Adjust width as needed */
+  height: 100px; /* Adjust height as needed */
+  border: 2px solid #fd0d0d; /* Add border if desired */
+  border-radius: 7px;
+  position: relative;
+}
+
+.progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
 }

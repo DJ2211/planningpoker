@@ -1,19 +1,31 @@
+import { HubConnection } from "@microsoft/signalr";
 import MainNavGame from "./MainNavGame";
 
 import "./MainGame.css";
 import React, { useEffect, useState } from "react";
 import { render } from "@testing-library/react";
-import { HubConnectionBuilder } from "@microsoft/signalr";
+
 import DisplayName from "./DisplayName";
+import userEvent from "@testing-library/user-event";
+import "react-toastify/dist/ReactToastify.css";
+import "animate.css/animate.min.css";
+import { toast, ToastContainer, Slide } from "react-toastify";
 
 interface Player {
   userid: string;
   selectedCard: string;
   name: string;
   isCardSelected: boolean;
+  isGameCreator: boolean;
+}
+
+interface RevealedCard {
+  card: number;
+  count: number;
 }
 
 interface MainGameProps {
+  hubConnection: HubConnection;
   token: string;
   query: string;
   displayName: string;
@@ -21,6 +33,15 @@ interface MainGameProps {
 }
 
 const MainGame: React.FC<MainGameProps> = (props) => {
+  const [gameEnded, setGameEnded] = useState(false);
+  // modified
+  const [revealedCards, setRevealedCards] = useState<
+    { card: number; count: number }[]
+  >([]);
+
+  const [average, setAverage] = useState<number>(0);
+
+  // const [averageCard, setAverageCard] = useState(0);
   const [newPlayer, setNewPlayer] = useState();
   const [token, setToken] = useState(props.token);
 
@@ -28,9 +49,155 @@ const MainGame: React.FC<MainGameProps> = (props) => {
 
   const [isCardSelected, setIsCardSelected] = useState(false);
 
+  const [isGameCreator, setIsGameCreator] = useState(false);
+
   const [revealCard, setRevealCard] = useState(false);
 
   const [players, setPlayers] = useState<Player[]>([]);
+
+  const [toaster, setToaster] = useState(false);
+
+  connection.start();
+
+  //its creating new instance of hubconnection on maingame.tsx
+
+  const handleCopyLink = () => {
+    setToaster(true);
+    const link = `http://localhost:3000/displayName/${token}`;
+    navigator.clipboard
+      .writeText(link)
+      .then(() => {
+        toast.success("Link copied to clipboard!", {
+          transition: Slide,
+          className: "animate__animated animate__fadeInRight",
+          autoClose: 3000,
+        });
+      })
+      .catch((error) => {
+        console.error("Failed to copy link:", error);
+      });
+
+    setToaster(false);
+  };
+
+  useEffect(() => {
+    if (!connection) {
+      connection = new HubConnectionBuilder()
+        .withUrl("https://localhost:7166/chatHub")
+        .build();
+    }
+  }, []);
+
+  useEffect(() => {
+    let connection = new HubConnectionBuilder()
+      .withUrl("https://localhost:7166/chatHub")
+      .build();
+    connection.start();
+
+    connection.on("ReceiveMessage", (message, users) => {
+      console.log("Received message:", message);
+      console.log("Updated users:", users);
+      setPlayers(users);
+    });
+  }, []);
+
+  // receivemessage
+  // Define a callback function to handle the "UpdatePlayers" event
+  const handleUpdatePlayers = (users: React.SetStateAction<Player[]>) => {
+    console.log(
+      "******************************************  receive player ***************************************************** "
+    );
+    // Update the players state with the received user list
+    setPlayers(users);
+  };
+
+  // Register the callback function for the "UpdatePlayers" event
+  connection.on("ReceiveMessage", handleUpdatePlayers);
+
+  useEffect(() => {
+    const link = "https://localhost:7166/User/GetGameCreator";
+    const playerId = sessionStorage.getItem("gameCreatorId");
+
+    if (playerId === null) {
+    } else {
+      const url = `${link}/${playerId}`;
+      fetch(url)
+        .then((response) => {
+          if (response.ok) {
+            return response.json();
+          } else {
+            throw new Error("Failed to fetch player data");
+          }
+        })
+        .then((data) => {
+          setIsGameCreator(data.isGameCreator);
+        })
+        .catch((error) => {
+          console.error(error);
+        });
+    }
+  }, []);
+
+  useEffect(() => {
+    // const connection: HubConnection = new HubConnectionBuilder()
+    //   .withUrl("https://localhost:7166/chatHub")
+    //   .build();
+
+    // connection.start().then(() => {
+    connection.on("ReceiveRevealCardEvent", (payload) => {
+      console.log("Reveal card event received");
+      setRevealCard(payload.revealCard);
+    });
+    // });
+  }, []);
+
+  useEffect(() => {
+    // Create a new hub connection
+
+    // connection.start().then(() => {
+
+    connection.on("GameStateReset", (usrs) => {
+      console.log("called gamestate reset funciton", usrs);
+      console.log(
+        "88888888888888888888888888888888888888888888888888888888888888888888   NEW GAME STARTED 8888888888888888888888888888888888888888888888888888888888888888888888888888888"
+      );
+      setGameEnded(false);
+      setRevealCard(false);
+      setAverage(0);
+      setSelectedCard("");
+      setIsCardSelected(false);
+      setNewPlayer(undefined);
+      setRevealedCards([]);
+
+      // Update the user data with the reset state
+      setPlayers(usrs);
+    });
+    // });
+  }, []);
+
+  useEffect(() => {
+    // const connection = new HubConnectionBuilder()
+    //   .withUrl("https://localhost:7166/chatHub")
+    //   .build();
+
+    // connection.start().then(() => {
+
+    connection.on("ReceiveRevealedCards", (cardsArray) => {
+      console.log("Received revealed cards:", cardsArray);
+      setRevealedCards(cardsArray);
+
+      // Calculate the average of card values
+      const totalValue = cardsArray.reduce(
+        (sum: number, card: { card: string; count: number }) =>
+          sum + parseInt(card.card),
+        0
+      );
+      const average = parseFloat((totalValue / cardsArray.length).toFixed(2));
+
+      setAverage(average);
+    });
+    // });
+  }, []);
 
   useEffect(() => {
     const userid = sessionStorage.getItem("useridFromAddUser");
@@ -38,46 +205,51 @@ const MainGame: React.FC<MainGameProps> = (props) => {
   }, []);
 
   useEffect(() => {
-    const hubConnection = new HubConnectionBuilder()
-      .withUrl("https://localhost:7166/chatHub") // Adjust the hub URL as per your setup
-      .build();
+    // const connection = new HubConnectionBuilder()
+    //   .withUrl("https://localhost:7166/chatHub")
+    //   .build();
 
-    hubConnection.on("ReceiveData", (data) => {
-      console.log("Received data:", data);
-      setNewPlayer(data);
-    });
-
-    hubConnection.start();
-
-    return () => {
-      hubConnection.stop();
-    };
-  }, []);
-
-  useEffect(() => {
-    const hubConnection = new HubConnectionBuilder()
-      .withUrl("https://localhost:7166/chatHub")
-      .build();
-
-    hubConnection.on("UpdatePlayers", (updatedPlayers) => {
-      console.log("called updated player api from maingame.tsx");
+    // connection.start().then(() => {
+    connection.on("UpdatePlayersFromServer", (updatedPlayers) => {
+      console.log(
+        "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww called updated player api from maingame.tsx wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww"
+      );
+      console.log(updatedPlayers);
       setPlayers(updatedPlayers);
     });
-    hubConnection.start();
-
-    return () => {
-      hubConnection.stop();
-    };
+    // });
   }, []);
 
   useEffect(() => {
-    let dataa = fetch("https://localhost:7166/User/GetPlayers")
-      .then(function (response) {
-        return response.json();
+    const tkn = token;
+    console.log(
+      "..........................................................................................................................."
+    );
+
+    // Create a new hub connection
+    // const connection = new HubConnectionBuilder()
+    //   .withUrl("https://localhost:7166/chatHub")
+    //   .build();
+
+    // connection.start().then(() => {
+
+    fetch(`https://localhost:7166/User/GetPlayers?gameToken=${tkn}`)
+      .then((response) => response.json())
+      .then((data) => {
+        setPlayers(data);
       })
-      // .then((dataa) => console.log(dataa))
-      .then((dataa) => setPlayers(dataa));
-  }, [newPlayer]);
+      .catch((error) => {
+        console.error("Error fetching players data:", error);
+      });
+
+    // connection
+    //   .invoke("JoinGame", tkn)
+    //   .then(() => {})
+    //   .catch((error) => {
+    //     console.error("Error joining the game:", error);
+    //   });
+    // });
+  }, []);
 
   let playersForRender = players;
 
@@ -106,7 +278,6 @@ const MainGame: React.FC<MainGameProps> = (props) => {
     setSelectedCard(mainvalue);
     setIsCardSelected(true);
     updateUser(mainvalue);
-    // updatePlayerCard(props.displayName, mainvalue);
   };
 
   const updateUser = (mainvalue: string) => {
@@ -115,42 +286,26 @@ const MainGame: React.FC<MainGameProps> = (props) => {
     const userId = sessionStorage.getItem("useridFromAddUser");
 
     const displayName = sessionStorage.getItem("name");
-    const token = props.token;
+    // const token = props.token;
+    let gameToken = sessionStorage.getItem("GameToken");
 
-    const updatedPlayers = players.map((player) => {
-      if (player.userid === userId) {
-        return {
-          ...player,
-          selectedCard: mainvalue,
-          isCardSelected: true,
-        };
-      }
-      return player;
-    });
+    // const updatedPlayers = players.map((player) => {
+    //   if (player.userid === userId) {
+    //     return {
+    //       ...player,
+    //       selectedCard: mainvalue,
+    //       isCardSelected: true,
+    //     };
+    //   }
+    //   return player;
+    // });
 
-    setPlayers(updatedPlayers);
-
-    console.log(
-      "below code is added from gpt to send all the clients the updated list line 134 in maingame.tsx"
-    );
+    console.log("this console is used when any user is updated ");
     // Send the updated player list to all clients using SignalR
-    const hubConnection = new HubConnectionBuilder()
-      .withUrl("https://localhost:7166/chatHub")
-      .build();
 
-    hubConnection.start().then(() => {
-      hubConnection
-        .invoke("UpdatePlayers", updatedPlayers)
-        .then(() => {
-          console.log("Player list updated and broadcasted to all clients");
-        })
-        .catch((error) => {
-          console.error("Error broadcasting player list:", error);
-        })
-        .finally(() => {
-          hubConnection.stop();
-        });
-    });
+    if (gameToken == null) {
+      gameToken = token;
+    }
 
     const user = {
       userid: userId,
@@ -161,9 +316,12 @@ const MainGame: React.FC<MainGameProps> = (props) => {
       selectedCard: mainvalue,
     };
 
+    console.log(
+      "this user will be updated to server in db call using fetch api"
+    );
     console.log(user);
 
-    // Send the POST request to add the user
+    // Send the PATCH request to add the user
     fetch("https://localhost:7166/User/UpdateUser", {
       method: "PATCH",
       headers: {
@@ -173,17 +331,38 @@ const MainGame: React.FC<MainGameProps> = (props) => {
         userid: sessionStorage.getItem("useridFromAddUser"),
         Name: displayName,
         GameToken: token,
-        isCardSelected: 1,
+        isCardSelected: true,
         selectedCard: mainvalue,
       }),
     })
-      .then((response) => {
-        console.log(response);
+      .then(() => {
+        console.log("user is successfully updated to fetch api in db call");
+
+        // below code is used to get players
       })
       .catch((error) => {
         // Handle any errors
         console.error("Error updating user:", error);
       });
+
+    // below code will be used to invoke update players to all the connected group clients
+    // updating user lists
+    // const connection = new HubConnectionBuilder()
+    //   .withUrl("https://localhost:7166/chatHub")
+    //   .build();
+
+    // connection.start().then(() => {
+    connection
+      .invoke("UpdatePlayers", gameToken)
+      .then(() => {
+        console.log(
+          "Player list updated and broadcasted to all the grouped clients"
+        );
+      })
+      .catch((error) => {
+        console.error("Error broadcasting player list:", error);
+      });
+    // });
   };
 
   for (let i = 1; i < 11; i++) {
@@ -203,7 +382,100 @@ const MainGame: React.FC<MainGameProps> = (props) => {
   const revealCardEvent = () => {
     setRevealCard(true);
 
-    console.log("revealCardEvent called");
+    // Calculate the vote count for each revealed card
+    const cardsMap = new Map<string, number>();
+    players.forEach((player) => {
+      const { selectedCard } = player;
+      if (selectedCard && selectedCard !== "") {
+        const count = cardsMap.get(selectedCard) || 0;
+        cardsMap.set(selectedCard, count + 1);
+      }
+    });
+
+    // Convert the cards map to an array of RevealedCard objects
+    const cardsArray: RevealedCard[] = Array.from(cardsMap.entries()).map(
+      ([card, count]) => ({
+        card: parseInt(card),
+        count,
+      })
+    );
+
+    // Calculate the average
+    const totalVotes = cardsArray.reduce((sum, card) => sum + card.count, 0);
+    const average = totalVotes / cardsArray.length;
+    setAverage(average);
+
+    // Update the revealed cards state
+    setRevealedCards(cardsArray);
+
+    // const connection = new HubConnectionBuilder()
+    //   .withUrl("https://localhost:7166/chatHub")
+    //   .build();
+
+    // connection
+    //   .start()
+    //   .then(() => {
+    connection
+      .invoke("BroadcastRevealedCards", token, cardsArray)
+      .then(() => {
+        console.log("Revealed cards and vote count broadcasted to all clients");
+      })
+      .catch((error) => {
+        console.error("Error broadcasting revealed cards:", error);
+      });
+    // })
+
+    // .then(() => {
+    connection
+      .invoke("BroadcastRevealCardEvent", {
+        revealCard: true,
+      })
+      .then(() => {
+        console.log("Reveal card event broadcasted to all clients");
+      })
+      .catch((error) => {
+        console.error("Error broadcasting reveal card event:", error);
+      });
+    // });
+
+    //broadcasting the reveal card event
+
+    setGameEnded(true);
+  };
+
+  const startNewGame = () => {
+    // Create a new hub connection
+    // const connection: HubConnection = new HubConnectionBuilder()
+    //   .withUrl("https://localhost:7166/chatHub")
+    //   .build();
+
+    //starting the connection
+    // connection.start().then(() => {
+    connection.on("GameStateReset", (usrs) => {
+      console.log(usrs);
+      console.log(
+        "********************************************************************   NEW GAME STARTED *********************************************************************"
+      );
+      // Reset the game state on the client-side
+      setGameEnded(false);
+      setRevealCard(false);
+      setAverage(0);
+      setSelectedCard("");
+      setIsCardSelected(false);
+      setPlayers(usrs);
+      setNewPlayer(undefined);
+      setRevealedCards([]);
+    });
+
+    connection
+      .invoke("ResetGameState", players, token)
+      .then(() => {
+        console.log("Game state reset and broadcast to all the clients");
+      })
+      .catch((error) => {
+        console.error("Error restarting game state: ", error);
+      });
+    // });
   };
 
   // logic to do in this line
@@ -215,127 +487,170 @@ const MainGame: React.FC<MainGameProps> = (props) => {
     >
       <div
         className={`maingame__card ${
-          // player.userid == sessionStorage.getItem("useridFromAddUser") &&
-          isCardSelected === true ? "maingame__card__backgroundsvg" : ""
+          player.isCardSelected == true ? "maingame__card__backgroundsvg" : ""
         }`}
       >
-        {player.selectedCard}
+        {player.isCardSelected ? player.selectedCard : ""}
       </div>
       <div className="maingame__lastname">{player.name}</div>
     </div>
   ));
 
-  if (revealCard === false) {
+  let mainContent;
+
+  if (isGameCreator === true) {
     if (isCardSelected === false) {
-      card.push(
-        <div className="maingame__card ">
-          <p className="d-none">{selectedCard}</p>
-        </div>
+      mainContent = (
+        <div className="maingame__table__text">pick your cards!</div>
       );
     } else if (isCardSelected === true) {
-      card.push(
-        <div className="maingame__card maingame__card__backgroundsvg">
-          <p className="d-none">{selectedCard}</p>
-        </div>
-      );
+      if (revealCard) {
+        mainContent = (
+          <div>
+            <button className="maingame__table__button" onClick={startNewGame}>
+              {" "}
+              New Game
+            </button>
+          </div>
+        );
+      } else {
+        mainContent = (
+          <button className="maingame__table__button" onClick={revealCardEvent}>
+            Reveal Your card
+          </button>
+        );
+      }
     }
-  } else if (revealCard === true) {
+  } else {
     if (isCardSelected === false) {
-      card.push(
-        <div className="maingame__card ">
-          <p>{selectedCard}</p>
-        </div>
+      mainContent = (
+        <div className="maingame__table__text">pick your cards!</div>
       );
-    } else if (isCardSelected == true) {
-      card.push(
-        <div className="maingame__card maingame__selected">
-          <p className="maingame__card__value">{selectedCard}</p>
-        </div>
-      );
+    } else if (isCardSelected === true) {
+      if (revealCard) {
+        mainContent = (
+          <div>
+            <button className="maingame__table__button" onClick={startNewGame}>
+              {" "}
+              {localStorage.getItem("creatorName")} will start new game
+            </button>
+          </div>
+        );
+      } else {
+        mainContent = (
+          <button className="maingame__table__button" onClick={revealCardEvent}>
+            {localStorage.getItem("creatorName")} will reveal cards
+          </button>
+        );
+      }
     }
   }
 
-  //this below to vote for another game
-  // if (revealCard === true) {
-  //   setRevealCard(false);
-  //   setIsCardSelected(false);
-  //   setSelectedCard(false);
-  // }
-
-  // conditional rendering for main pick your card component
-  const picker = [];
-  if (isCardSelected == false) {
-    picker.push(<div className="maingame__table__text">pick your cards!</div>);
-  } else if (isCardSelected == true) {
-    picker.push(
-      <button className="maingame__table__button" onClick={revealCardEvent}>
-        Reveal Your card
-      </button>
-    );
-  }
+  const totalVotes = revealedCards.reduce(
+    (total, card) => total + card.count,
+    0
+  );
+  const progress = revealedCards.map((card, index) => {
+    return (card.count / totalVotes) * 100;
+  });
 
   return (
     <>
       <MainNavGame data={props} />
+      <ToastContainer transition={Slide} />
       <div className="container">
         <div className="maingame">
           <div>
-            <p>feeling sus? </p>
+            <p>feeling lonely like me? </p>
           </div>
           <div className="maingame__invite">
-            <p>Invite Players</p>
+            <button
+              className="maingame__invite__button"
+              onClick={handleCopyLink}
+            >
+              Invite Players
+            </button>
           </div>
           <div className="maingame__table">
-            <div className="maingame__table__div">{picker}</div>
+            <div className="maingame__table__div">{mainContent}</div>
           </div>
         </div>
         {/* below code is for rendering users in given token , token logic is pending but main card rendering is started */}
 
         <div className="maingame__card__multipleUsers justify-content-center ">
-          {renderPlayers}
-          {/* {playersForRender &&
-            playersForRender.map((player: Player, index: number) => {
-              return (
-                <>
-                  <div className="maingame__card__div maingame__card__padding">
-                    <div className="maingame__card">{player.selectedCard}</div>
-                    <div className="maingame__lastname">{player.name}</div>
-                  </div>
-                </>
-              );
-            })} */}
+          {revealCard ? (
+            <div>
+              <div className="d-flex ">
+                {revealedCards.map((card, index) => {
+                  const progress = (card.count / totalVotes) * 100;
+
+                  return (
+                    <div key={index}>
+                      <div className="progress-bar  m-auto">
+                        <div
+                          className="progress"
+                          style={{
+                            height: `${progress}%`,
+                            backgroundColor: "#ff7e7e",
+                          }}
+                        ></div>
+                      </div>
+                      <div className="m-2">
+                        <div
+                          key={index}
+                          className="maingame__card maingame__card__renderForOutput"
+                        >
+                          <p className="maingame__card__cardText">
+                            {card.card}
+                          </p>
+                        </div>
+                        <p>Votes: {card.count}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="maingame__card__cardText__avg">
+                Average: {average}
+              </p>
+            </div>
+          ) : (
+            renderPlayers
+          )}
         </div>
       </div>
 
       {/* below this is for card rendering for fibonacci */}
-      <div className="container main__card__render">
-        <div>
-          <p>Choose your card 👇</p>
-        </div>
-        <div>
-          <div className="card__render__main">
-            <ul className="ul__card__render__main">
-              <li className="li__card__render__main" key={0}>
-                <button
-                  className="button__card__render__main"
-                  onClick={clickHandler}
-                >
-                  <span>0</span>
-                </button>
-              </li>
-              {final}
-              <li className="li__card__render__main" key={"random"}>
-                <button
-                  className="button__card__render__main"
-                  onClick={clickHandlerRandom}
-                >
-                  <span>?</span>
-                </button>
-              </li>
-            </ul>
+      {!revealCard && (
+        <div className="container main__card__render">
+          <div>
+            <p>Choose your card 👇</p>
+          </div>
+          <div>
+            <div className="card__render__main">
+              <ul className="ul__card__render__main">
+                <li className="li__card__render__main" key={0}>
+                  <button
+                    className="button__card__render__main"
+                    onClick={clickHandler}
+                  >
+                    <span>0</span>
+                  </button>
+                </li>
+                {final}
+                <li className="li__card__render__main" key={"random"}>
+                  <button
+                    className="button__card__render__main"
+                    onClick={clickHandlerRandom}
+                  >
+                    <span>?</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 };

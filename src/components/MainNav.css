@@ -12,3 +12,7 @@
   padding-right: 30px;
   margin: 7px;
 }
+
+.maingame__invite__button {
+  background-color: transparent;
+}

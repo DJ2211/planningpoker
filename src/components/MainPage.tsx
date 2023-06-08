@@ -1,39 +1,67 @@
-import MainGame from "./MainGame";
+import { HubConnection } from "@microsoft/signalr";
 import { useState } from "react";
 import "./MainPage.css";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import MainNav from "./MainNav";
 import Modal from "react-overlays/Modal";
+import DisplayName from "./DisplayName";
+import { v4 as uuidv4 } from "uuid";
+import MainGame from "./MainGame";
 
 interface MainPageProps {
-  onQuery: (query: string) => void;
+  tokenFromMainPage: (data: string) => void;
 }
 
-function MainPage({ onQuery }: MainPageProps): JSX.Element {
-  //using states
-  // const [user, setUser] = useState();
+const MainPage: React.FC<MainPageProps> = ({ tokenFromMainPage }) => {
+  const [gameCreatorName, setGameCreatorName] = useState<string | null>(null);
 
-  // useEffect(() => {
-  //   let dataa = fetch("https://localhost:7166/User/GetUser")
-  //     .then(function (response) {
-  //       return response.json();
-  //     })
-  //     // .then((dataa) => console.log(dataa))
-  //     .then((dataa) => setPlayers(dataa));
-  // }, []);
-
+  const GameToken = uuidv4();
+  console.log("the token from mainpage");
+  console.log(GameToken);
   const navigate = useNavigate();
 
   const navigateToMainGame = () => {
-    // navigate to /main the token logic will be written here in future
-    // if user exists go to main game page otherwise go to displayname page
+    navigate(`/displayName/${GameToken}`);
+  };
 
-    navigate("/displayName");
+  const addGameCreator = () => {
+    fetch("https://localhost:7166/User/AddCreator", {
+      method: "POST",
+      body: JSON.stringify({
+        Name: gameCreatorName,
+        GameToken: GameToken,
+        IsGameCreator: true,
+      }),
+      headers: {
+        "Content-type": "application/json; charset=UTF-8",
+      },
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        console.log(res + "called after adding user from maingame");
+        console.log(res);
+        const UID = res.userid;
+        const resName = res.name;
+        sessionStorage.setItem("useridFromAddUser", UID);
+        sessionStorage.setItem("GameCreatorName", gameCreatorName || "");
+        sessionStorage.setItem("name", resName);
+        sessionStorage.setItem("gameCreatorId", UID);
+        localStorage.setItem("creatorName", gameCreatorName || "");
+        sessionStorage.setItem("GameToken", res.gameToken || "");
+        // localStorage.setItem("GameTokenLocal", res.gameToken || "");
+        tokenFromMainPage(res.gameToken || "");
+      })
+
+      .catch((err) => {
+        console.log(err.message);
+      });
+
+    // getUser();
   };
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log(e.target.value);
-    onQuery(e.target.value);
+    setGameCreatorName(e.target.value);
   };
 
   return (
@@ -60,7 +88,13 @@ function MainPage({ onQuery }: MainPageProps): JSX.Element {
             </div>
           </div>
           <div className="mainpage__button__div">
-            <button className="mainpage__button " onClick={navigateToMainGame}>
+            <button
+              className="mainpage__button "
+              onClick={function () {
+                addGameCreator();
+                navigateToMainGame();
+              }}
+            >
               Create game
             </button>
           </div>
@@ -68,6 +102,6 @@ function MainPage({ onQuery }: MainPageProps): JSX.Element {
       </div>
     </>
   );
-}
+};
 
 export default MainPage;

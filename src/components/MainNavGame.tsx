@@ -8,6 +8,11 @@ interface MainNavGameProps {
 }
 
 const MainNavGame = (props: MainNavGameProps): JSX.Element => {
+  const id = sessionStorage.getItem("useridFromAddUser");
+  let name = sessionStorage.getItem("name");
+  const creatorname = localStorage.getItem("creatorName");
+  const gameCreatorName = sessionStorage.getItem("GameCreatorName");
+
   return (
     <>
       <div className="nav d-flex flex-row mainnav__main__div">
@@ -38,14 +43,14 @@ const MainNavGame = (props: MainNavGameProps): JSX.Element => {
             </svg>
           </div>
           <div>
-            <h2 className="nav__heading">{props.data.query}'s Game</h2>
+            <h2 className="nav__heading">{creatorname}'s Game</h2>
           </div>
         </div>
 
         {/* second child of parent div */}
         <div className="d-flex flex-row">
           <div>
-            <h2 className="nav__heading">{props.data.displayName}'s Game</h2>
+            <h2 className="nav__heading">{name}'s Screen</h2>
           </div>
           <div>
             <button type="button" className="nav__invite__button">

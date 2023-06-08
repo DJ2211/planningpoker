@@ -1,86 +1,136 @@
 import { useEffect, useState } from "react";
+import { HubConnection } from "@microsoft/signalr";
 import "./DisplayName.css";
-import { Routes, Route, useNavigate } from "react-router-dom";
-import { HubConnectionContext } from "../App";
-import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
+import { Routes, Route, useNavigate, useParams } from "react-router-dom";
 
 interface DisplayNameProps {
+  hubConnection: HubConnection;
   changeDisplayName: (name: string) => void;
   displayName: string;
-  getToken: (token: string | null) => void;
+  getToken: string;
   onUserIdChange: (userid: any) => void;
 }
 
 const DisplayName: React.FC<DisplayNameProps> = ({
+  hubConnection,
   changeDisplayName,
   displayName,
   getToken,
   onUserIdChange,
 }) => {
-  const [latestUser, setLatestUser] = useState("");
   const [token, setToken] = useState("");
 
-  const navigate = useNavigate();
-  let hubConnection: HubConnection | null = null;
-
-  const navigateToMainGame = () => {
-    // navigate to /main the token logic will be written here in future
-    // navigate(`/main/${token}`);
-    navigate(`/main`);
-    console.log("token called from displayname " + token);
-    // navigate("/main");
-  };
-
   useEffect(() => {
-    let dataa = fetch("https://localhost:7166/User/GetToken")
-      .then(function (response) {
-        return response.text();
-      })
-      .then((dataa) => setToken(dataa));
+    const fetchTokenData = async () => {
+      // Extract the token from the URL
+      const url = window.location.pathname;
+      const token = url.substring(url.lastIndexOf("/") + 1);
+
+      // Send a request to check if the token exists in the database
+      try {
+        const response = await fetch(
+          `https://localhost:7166/User/CheckToken?token=${token}`
+        );
+        if (response.ok) {
+          // Token exists in the database
+          console.log("Token exists:", token);
+          setToken(token);
+          sessionStorage.setItem("TokenFromLink", token);
+          // Perform any desired actions with the token
+        } else {
+          // Token does not exist in the database
+          console.log("Token does not exist:", token);
+          // Perform any desired actions for a non-existent token
+        }
+      } catch (error) {
+        console.error("Error checking token:", error);
+        // Perform error handling
+      }
+    };
+
+    fetchTokenData();
   }, []);
 
-  const addUsers = () => {
-    fetch("https://localhost:7166/User/AddUser", {
-      method: "POST",
-      body: JSON.stringify({
-        Name: displayName,
-        GameToken: token,
-      }),
-      headers: {
-        "Content-type": "application/json; charset=UTF-8",
-      },
-    })
-      .then((res) => res.json())
-      .then((res) => {
-        console.log(res + "called after adding user from displayname");
-        const UID = res.userid;
-        const resName = res.name;
-        sessionStorage.setItem("useridFromAddUser", UID);
-        sessionStorage.setItem("name", resName);
-      })
+  const navigate = useNavigate();
 
-      .catch((err) => {
-        console.log(err.message);
-      });
-
-    // getUser();
+  const navigateToMainGame = () => {
+    joinGameGroup(token); // Join the game group
+    navigate(`/main/${token}`);
+    console.log("token called from displayname " + token);
   };
 
-  // const getUser = () => {
-  //   let dataa = fetch("https://localhost:7166/User/GetUser")
-  //     .then(function (response) {
-  //       return response.json();
-  //     })
-  //     .then((dataa) => {
-  //       console.log(dataa);
-  //       setLatestUser(dataa);
-  //       onUserIdChange(dataa.userid);
-  //       sessionStorage.setItem("userid", dataa.userid);
-  //       console.log(
-  //         "called userid of current player from displayName line 73" + dataa
-  //       );
-  //     });
-  // };
+  // code for creating group and joining in them is written here down
+  const joinGameGroup = async (gameToken: string) => {
+    try {
+      if (hubConnection) {
+        await hubConnection.invoke("JoinGame", gameToken); // Join the game group
+        console.log("Connected to SignalR hub and joined the game group.");
+
+        // Other SignalR event handlers or methods can be added here
+
+        // hubConnection.on("ReceiveMessage", (message, users) => {
+        //   console.log(message);
+        //   console.log(users);
+        // });
+      }
+    } catch (error) {
+      console.error("Error establishing SignalR connection:", error);
+    }
+  };
+
+  const addUsers = () => {
+    const flagForCreator = sessionStorage.getItem("useridFromAddUser");
+    const gameCreatorName = sessionStorage.getItem("GameCreatorName");
+    // const tokenFromSession = sessionStorage.getItem("GameToken");
+
+    if (flagForCreator != null && gameCreatorName != null) {
+      // Send the PATCH request to add the user
+      fetch("https://localhost:7166/User/UpdateUser", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userid: flagForCreator,
+          Name: displayName,
+          GameToken: token,
+        }),
+      })
+        .then((res) => res.json())
+        .then((res) => {
+          console.log(res + "called after updating user from main page");
+          const resName = res.name;
+          sessionStorage.setItem("name", displayName);
+        })
+
+        .catch((err) => {
+          console.log(err.message);
+        });
+    } else {
+      fetch("https://localhost:7166/User/AddUser", {
+        method: "POST",
+        body: JSON.stringify({
+          Name: displayName,
+          GameToken: token,
+        }),
+        headers: {
+          "Content-type": "application/json; charset=UTF-8",
+        },
+      })
+        .then((res) => res.json())
+        .then((res) => {
+          console.log(res + "called after adding user from displayname");
+          const UID = res.userid;
+          const resName = res.name;
+          sessionStorage.setItem("useridFromAddUser", UID);
+          sessionStorage.setItem("name", resName);
+        })
+
+        .catch((err) => {
+          console.log(err.message);
+        });
+    }
+  };
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log(e.target.value);
@@ -105,8 +155,8 @@ const DisplayName: React.FC<DisplayNameProps> = ({
           <button
             className="mainpage__button"
             onClick={function () {
-              navigateToMainGame();
               addUsers();
+              navigateToMainGame();
             }}
           >
             Save
