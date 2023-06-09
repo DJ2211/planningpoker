@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HubConnection } from "@microsoft/signalr";
+import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
 import "./DisplayName.css";
 import { Routes, Route, useNavigate, useParams } from "react-router-dom";
 
@@ -54,28 +54,34 @@ const DisplayName: React.FC<DisplayNameProps> = ({
   const navigate = useNavigate();
 
   const navigateToMainGame = () => {
-    joinGameGroup(token); // Join the game group
-    navigate(`/main/${token}`);
+    joinGameGroup(token) // Join the game group
+      .then(() => {
+        navigate(`/main/${token}`);
+      })
+      .catch((err) => {
+        console.log(err.message);
+      });
     console.log("token called from displayname " + token);
   };
 
   // code for creating group and joining in them is written here down
-  const joinGameGroup = async (gameToken: string) => {
-    try {
-      if (hubConnection) {
-        await hubConnection.invoke("JoinGame", gameToken); // Join the game group
-        console.log("Connected to SignalR hub and joined the game group.");
+  // const joinGameGroup = (gameToken: string) => {
+  //   hubConnection.invoke("JoinGame", gameToken); // Join the game group
+  //   console.log("Connected to SignalR hub and joined the game group.");
+  // };
 
-        // Other SignalR event handlers or methods can be added here
+  const joinGameGroup = async (gameToken: string): Promise<void> => {
+    if (!hubConnection) {
+      hubConnection = new HubConnectionBuilder()
+        .withUrl("https://localhost:7166/chatHub")
+        .build();
 
-        // hubConnection.on("ReceiveMessage", (message, users) => {
-        //   console.log(message);
-        //   console.log(users);
-        // });
-      }
-    } catch (error) {
-      console.error("Error establishing SignalR connection:", error);
+      await hubConnection.start();
+      console.log("Connected to SignalR hub.");
     }
+
+    await hubConnection.invoke("JoinGame", gameToken);
+    console.log("Joined the game group.");
   };
 
   const addUsers = () => {
@@ -102,6 +108,9 @@ const DisplayName: React.FC<DisplayNameProps> = ({
           const resName = res.name;
           sessionStorage.setItem("name", displayName);
         })
+        .then(() => {
+          navigateToMainGame();
+        })
 
         .catch((err) => {
           console.log(err.message);
@@ -125,11 +134,16 @@ const DisplayName: React.FC<DisplayNameProps> = ({
           sessionStorage.setItem("useridFromAddUser", UID);
           sessionStorage.setItem("name", resName);
         })
+        .then(() => {
+          navigateToMainGame();
+        })
 
         .catch((err) => {
           console.log(err.message);
         });
     }
+
+    //now after adding  user navigate to main game
   };
 
   const handleInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -156,7 +170,6 @@ const DisplayName: React.FC<DisplayNameProps> = ({
             className="mainpage__button"
             onClick={function () {
               addUsers();
-              navigateToMainGame();
             }}
           >
             Save

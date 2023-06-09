@@ -2,7 +2,7 @@ import { HubConnectionBuilder, HubConnection } from "@microsoft/signalr";
 
 // Create a new hubConnection instance
 export const hubConnection: HubConnection = new HubConnectionBuilder()
-  .withUrl("https://your-signalr-endpoint")
+  .withUrl("https://localhost:7166/chatHub")
   .build();
 
 // Start the hubConnection

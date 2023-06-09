@@ -10,9 +10,13 @@ import MainGame from "./MainGame";
 
 interface MainPageProps {
   tokenFromMainPage: (data: string) => void;
+  hubConnection: HubConnection;
 }
 
-const MainPage: React.FC<MainPageProps> = ({ tokenFromMainPage }) => {
+const MainPage: React.FC<MainPageProps> = ({
+  tokenFromMainPage,
+  hubConnection,
+}) => {
   const [gameCreatorName, setGameCreatorName] = useState<string | null>(null);
 
   const GameToken = uuidv4();

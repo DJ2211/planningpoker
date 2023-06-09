@@ -1,4 +1,4 @@
-import { HubConnection } from "@microsoft/signalr";
+import { HubConnection, HubConnectionBuilder } from "@microsoft/signalr";
 import MainNavGame from "./MainNavGame";
 
 import "./MainGame.css";
@@ -20,19 +20,30 @@ interface Player {
 }
 
 interface RevealedCard {
-  card: number;
-  count: number;
+  Card: number;
+  Count: number;
 }
 
 interface MainGameProps {
   hubConnection: HubConnection;
-  token: string;
+  tokenProp: string;
   query: string;
   displayName: string;
   userid: string;
 }
 
-const MainGame: React.FC<MainGameProps> = (props) => {
+// interface MainGameProps {
+//   query: string;
+//   displayName: string;
+// }
+
+const MainGame: React.FC<MainGameProps> = ({
+  hubConnection,
+  tokenProp,
+  query,
+  displayName,
+  userid,
+}) => {
   const [gameEnded, setGameEnded] = useState(false);
   // modified
   const [revealedCards, setRevealedCards] = useState<
@@ -43,7 +54,7 @@ const MainGame: React.FC<MainGameProps> = (props) => {
 
   // const [averageCard, setAverageCard] = useState(0);
   const [newPlayer, setNewPlayer] = useState();
-  const [token, setToken] = useState(props.token);
+  const [token, setToken] = useState(tokenProp);
 
   const [selectedCard, setSelectedCard] = useState("");
 
@@ -57,7 +68,7 @@ const MainGame: React.FC<MainGameProps> = (props) => {
 
   const [toaster, setToaster] = useState(false);
 
-  connection.start();
+  // connection.start();
 
   //its creating new instance of hubconnection on maingame.tsx
 
@@ -80,39 +91,16 @@ const MainGame: React.FC<MainGameProps> = (props) => {
     setToaster(false);
   };
 
-  useEffect(() => {
-    if (!connection) {
-      connection = new HubConnectionBuilder()
-        .withUrl("https://localhost:7166/chatHub")
-        .build();
-    }
-  }, []);
-
-  useEffect(() => {
-    let connection = new HubConnectionBuilder()
-      .withUrl("https://localhost:7166/chatHub")
-      .build();
-    connection.start();
-
-    connection.on("ReceiveMessage", (message, users) => {
-      console.log("Received message:", message);
-      console.log("Updated users:", users);
-      setPlayers(users);
-    });
-  }, []);
+  // useEffect(() => {
+  //   hubConnection.on("ReceiveMessage", (message, users) => {
+  //     console.log("Received message:", message);
+  //     console.log("Updated users:", users);
+  //     setPlayers(users);
+  //   });
+  // }, []);
 
   // receivemessage
   // Define a callback function to handle the "UpdatePlayers" event
-  const handleUpdatePlayers = (users: React.SetStateAction<Player[]>) => {
-    console.log(
-      "******************************************  receive player ***************************************************** "
-    );
-    // Update the players state with the received user list
-    setPlayers(users);
-  };
-
-  // Register the callback function for the "UpdatePlayers" event
-  connection.on("ReceiveMessage", handleUpdatePlayers);
 
   useEffect(() => {
     const link = "https://localhost:7166/User/GetGameCreator";
@@ -138,25 +126,25 @@ const MainGame: React.FC<MainGameProps> = (props) => {
     }
   }, []);
 
-  useEffect(() => {
-    // const connection: HubConnection = new HubConnectionBuilder()
-    //   .withUrl("https://localhost:7166/chatHub")
-    //   .build();
+  // useEffect(() => {
+  //   // const connection: HubConnection = new HubConnectionBuilder()
+  //   //   .withUrl("https://localhost:7166/chatHub")
+  //   //   .build();
 
-    // connection.start().then(() => {
-    connection.on("ReceiveRevealCardEvent", (payload) => {
-      console.log("Reveal card event received");
-      setRevealCard(payload.revealCard);
-    });
-    // });
-  }, []);
+  //   // connection.start().then(() => {
+  //   hubConnection.on("ReceiveRevealCardEvent", (payload) => {
+  //     console.log("Reveal card event received");
+  //     setRevealCard(payload.revealCard);
+  //   });
+  //   // });
+  // }, []);
 
   useEffect(() => {
     // Create a new hub connection
 
     // connection.start().then(() => {
 
-    connection.on("GameStateReset", (usrs) => {
+    hubConnection.on("GameStateReset", (usrs) => {
       console.log("called gamestate reset funciton", usrs);
       console.log(
         "88888888888888888888888888888888888888888888888888888888888888888888   NEW GAME STARTED 8888888888888888888888888888888888888888888888888888888888888888888888888888888"
@@ -176,48 +164,79 @@ const MainGame: React.FC<MainGameProps> = (props) => {
   }, []);
 
   useEffect(() => {
-    // const connection = new HubConnectionBuilder()
-    //   .withUrl("https://localhost:7166/chatHub")
-    //   .build();
-
-    // connection.start().then(() => {
-
-    connection.on("ReceiveRevealedCards", (cardsArray) => {
-      console.log("Received revealed cards:", cardsArray);
-      setRevealedCards(cardsArray);
-
-      // Calculate the average of card values
-      const totalValue = cardsArray.reduce(
-        (sum: number, card: { card: string; count: number }) =>
-          sum + parseInt(card.card),
-        0
-      );
-      const average = parseFloat((totalValue / cardsArray.length).toFixed(2));
-
-      setAverage(average);
-    });
-    // });
-  }, []);
-
-  useEffect(() => {
     const userid = sessionStorage.getItem("useridFromAddUser");
     console.log("getting user id from session storage " + userid);
   }, []);
 
   useEffect(() => {
-    // const connection = new HubConnectionBuilder()
-    //   .withUrl("https://localhost:7166/chatHub")
-    //   .build();
-
-    // connection.start().then(() => {
-    connection.on("UpdatePlayersFromServer", (updatedPlayers) => {
+    const handleUpdatePlayers = (users: React.SetStateAction<Player[]>) => {
       console.log(
-        "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww called updated player api from maingame.tsx wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww"
+        "******************************************  receive player ***************************************************** "
       );
-      console.log(updatedPlayers);
-      setPlayers(updatedPlayers);
-    });
-    // });
+      console.log(users);
+      // Update the players state with the received user list
+      setPlayers(users);
+    };
+
+    // Register the callback function for the "UpdatePlayers" event
+
+    if (!hubConnection) {
+      hubConnection = new HubConnectionBuilder()
+        .withUrl("https://localhost:7166/chatHub")
+        .build();
+
+      hubConnection.start().then(() => {
+        hubConnection.on("ReceiveMessage", handleUpdatePlayers);
+      });
+    } else {
+      hubConnection.on("ReceiveMessage", handleUpdatePlayers);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleReceivedCardsList = (cardsArray: RevealedCard[]) => {
+      console.log(
+        "******************************************  RECEIVE CARD LIST ***************************************************** "
+      );
+
+      console.log(cardsArray);
+      setRevealedCards(cardsArray);
+
+      // Calculate the average of card values
+      const totalValue = cardsArray.reduce(
+        (sum: number, card: RevealedCard) => sum + card.Count,
+        0
+      );
+      const average = parseFloat((totalValue / cardsArray.length).toFixed(2));
+
+      setAverage(average);
+    };
+
+    if (!hubConnection) {
+      hubConnection = new HubConnectionBuilder()
+        .withUrl("https://localhost:7166/chatHub")
+        .build();
+
+      hubConnection.start().then(() => {
+        hubConnection.on("ReceiveRevealedCards", handleReceivedCardsList);
+      });
+    } else {
+      hubConnection.on("ReceiveRevealedCards", handleReceivedCardsList);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleUserPlayers = (
+      playersFromServer: React.SetStateAction<Player[]>
+    ) => {
+      console.log(
+        "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww received Updated players wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww"
+      );
+      console.log(playersFromServer);
+      setPlayers(playersFromServer);
+    };
+
+    hubConnection.on("sendPlayers", handleUserPlayers);
   }, []);
 
   useEffect(() => {
@@ -262,7 +281,7 @@ const MainGame: React.FC<MainGameProps> = (props) => {
     setIsCardSelected(true);
     updateUser(randomvalue);
   };
-  const card = [];
+  const Card = [];
 
   let n1 = 0,
     n2 = 1,
@@ -339,20 +358,21 @@ const MainGame: React.FC<MainGameProps> = (props) => {
         console.log("user is successfully updated to fetch api in db call");
 
         // below code is used to get players
+        let gameToken = sessionStorage.getItem("GameToken");
+
+        if (gameToken == null) {
+          gameToken = token;
+        }
+        updatePlayerInServer(gameToken);
       })
       .catch((error) => {
         // Handle any errors
         console.error("Error updating user:", error);
       });
+  };
 
-    // below code will be used to invoke update players to all the connected group clients
-    // updating user lists
-    // const connection = new HubConnectionBuilder()
-    //   .withUrl("https://localhost:7166/chatHub")
-    //   .build();
-
-    // connection.start().then(() => {
-    connection
+  const updatePlayerInServer = (gameToken: string) => {
+    hubConnection
       .invoke("UpdatePlayers", gameToken)
       .then(() => {
         console.log(
@@ -362,7 +382,6 @@ const MainGame: React.FC<MainGameProps> = (props) => {
       .catch((error) => {
         console.error("Error broadcasting player list:", error);
       });
-    // });
   };
 
   for (let i = 1; i < 11; i++) {
@@ -380,6 +399,8 @@ const MainGame: React.FC<MainGameProps> = (props) => {
 
   // conditional rendering for cards component
   const revealCardEvent = () => {
+    let gameToken = sessionStorage.getItem("GameToken");
+
     setRevealCard(true);
 
     // Calculate the vote count for each revealed card
@@ -401,81 +422,36 @@ const MainGame: React.FC<MainGameProps> = (props) => {
     );
 
     // Calculate the average
-    const totalVotes = cardsArray.reduce((sum, card) => sum + card.count, 0);
+    const totalVotes = cardsArray.reduce((sum, Card) => sum + Card.Count, 0);
     const average = totalVotes / cardsArray.length;
     setAverage(average);
 
     // Update the revealed cards state
     setRevealedCards(cardsArray);
 
-    // const connection = new HubConnectionBuilder()
-    //   .withUrl("https://localhost:7166/chatHub")
-    //   .build();
+    console.log(cardsArray);
 
-    // connection
-    //   .start()
-    //   .then(() => {
-    connection
-      .invoke("BroadcastRevealedCards", token, cardsArray)
+    hubConnection
+      .invoke("BroadcastRevealedCards", gameToken, cardsArray)
       .then(() => {
         console.log("Revealed cards and vote count broadcasted to all clients");
       })
       .catch((error) => {
         console.error("Error broadcasting revealed cards:", error);
       });
-    // })
-
-    // .then(() => {
-    connection
-      .invoke("BroadcastRevealCardEvent", {
-        revealCard: true,
-      })
-      .then(() => {
-        console.log("Reveal card event broadcasted to all clients");
-      })
-      .catch((error) => {
-        console.error("Error broadcasting reveal card event:", error);
-      });
-    // });
-
-    //broadcasting the reveal card event
 
     setGameEnded(true);
   };
 
   const startNewGame = () => {
-    // Create a new hub connection
-    // const connection: HubConnection = new HubConnectionBuilder()
-    //   .withUrl("https://localhost:7166/chatHub")
-    //   .build();
-
-    //starting the connection
-    // connection.start().then(() => {
-    connection.on("GameStateReset", (usrs) => {
-      console.log(usrs);
-      console.log(
-        "********************************************************************   NEW GAME STARTED *********************************************************************"
-      );
-      // Reset the game state on the client-side
-      setGameEnded(false);
-      setRevealCard(false);
-      setAverage(0);
-      setSelectedCard("");
-      setIsCardSelected(false);
-      setPlayers(usrs);
-      setNewPlayer(undefined);
-      setRevealedCards([]);
-    });
-
-    connection
-      .invoke("ResetGameState", players, token)
+    hubConnection
+      .invoke("ResetGameState", token)
       .then(() => {
         console.log("Game state reset and broadcast to all the clients");
       })
       .catch((error) => {
         console.error("Error restarting game state: ", error);
       });
-    // });
   };
 
   // logic to do in this line
@@ -547,16 +523,16 @@ const MainGame: React.FC<MainGameProps> = (props) => {
   }
 
   const totalVotes = revealedCards.reduce(
-    (total, card) => total + card.count,
+    (total, Card) => total + Card.count,
     0
   );
-  const progress = revealedCards.map((card, index) => {
-    return (card.count / totalVotes) * 100;
+  const progress = revealedCards.map((Card, index) => {
+    return (Card.count / totalVotes) * 100;
   });
 
   return (
     <>
-      <MainNavGame data={props} />
+      <MainNavGame query={query} displayName={displayName} />
       <ToastContainer transition={Slide} />
       <div className="container">
         <div className="maingame">
@@ -581,8 +557,8 @@ const MainGame: React.FC<MainGameProps> = (props) => {
           {revealCard ? (
             <div>
               <div className="d-flex ">
-                {revealedCards.map((card, index) => {
-                  const progress = (card.count / totalVotes) * 100;
+                {revealedCards.map((Card, index) => {
+                  const progress = (Card.count / totalVotes) * 100;
 
                   return (
                     <div key={index}>
@@ -601,10 +577,10 @@ const MainGame: React.FC<MainGameProps> = (props) => {
                           className="maingame__card maingame__card__renderForOutput"
                         >
                           <p className="maingame__card__cardText">
-                            {card.card}
+                            {Card.card}
                           </p>
                         </div>
-                        <p>Votes: {card.count}</p>
+                        <p>Votes: {Card.count}</p>
                       </div>
                     </div>
                   );

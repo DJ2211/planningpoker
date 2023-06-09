@@ -1,10 +1,8 @@
 import "./MainNavGame.css";
 
 interface MainNavGameProps {
-  data: {
-    query: String;
-    displayName: String;
-  };
+  query: String;
+  displayName: String;
 }
 
 const MainNavGame = (props: MainNavGameProps): JSX.Element => {

@@ -94,11 +94,11 @@ const App: React.FC = () => {
           path={`/main/${token}`}
           element={
             <MainGame
+              hubConnection={hubConnection}
+              tokenProp={token || ""}
               query={query}
               displayName={displayName}
-              token={token || ""}
               userid={userid}
-              hubConnection={hubConnection}
             />
           }
         />
